@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KasirKu — Point of Sale</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ========== HEADER ========== -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">
+      <span class="logo-icon">⬡</span>
+      <span class="logo-text">KasirKu</span>
+    </div>
+    <div class="store-info">
+      <span id="store-name-display">Toko Saya</span>
+      <button class="btn-ghost btn-sm" onclick="openSettings()">⚙</button>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="datetime" id="datetime"></div>
+    <button class="btn-outline btn-sm" onclick="openStockManager()">📦 Kelola Stok</button>
+  </div>
+</header>
+
+<!-- ========== TAB BAR (mobile only) ========== -->
+<div class="mobile-tabs" id="mobile-tabs">
+  <button class="tab-btn active" id="tab-produk" onclick="switchTab('produk')">
+    🛍 Produk
+  </button>
+  <button class="tab-btn" id="tab-keranjang" onclick="switchTab('keranjang')">
+    🛒 Keranjang
+    <span class="cart-badge" id="cart-badge" style="display:none">0</span>
+  </button>
+</div>
+
+<!-- ========== MAIN LAYOUT ========== -->
+<main class="main-layout">
+
+  <!-- LEFT: Product Grid -->
+  <section class="product-section" id="panel-produk">
+    <div class="section-header">
+      <h2 class="section-title">Produk</h2>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Cari produk..." oninput="filterProducts()" />
+      </div>
+    </div>
+    <div class="product-grid" id="product-grid"></div>
+  </section>
+
+  <!-- RIGHT: Cart + Transaction -->
+  <aside class="cart-section" id="panel-keranjang">
+    <div class="cart-header">
+      <h2 class="section-title">Keranjang</h2>
+      <button class="btn-ghost btn-sm danger" onclick="clearCart()">🗑 Kosongkan</button>
+    </div>
+
+    <div class="cart-list" id="cart-list">
+      <div class="cart-empty" id="cart-empty">
+        <span class="cart-empty-icon">🛒</span>
+        <p>Keranjang masih kosong</p>
+      </div>
+    </div>
+
+    <div class="cart-footer">
+      <div class="subtotal-row">
+        <span>Subtotal</span>
+        <span id="subtotal-display">Rp 0</span>
+      </div>
+
+      <div class="discount-row">
+        <span>Diskon</span>
+        <div class="discount-input-wrap">
+          <input type="number" id="discount-input" placeholder="0" min="0" max="100" oninput="updateTotal()" />
+          <span class="pct-label">%</span>
+        </div>
+      </div>
+
+      <div class="total-row">
+        <span>Total</span>
+        <span id="total-display">Rp 0</span>
+      </div>
+
+      <div class="customer-row">
+        <label>Nama Pelanggan</label>
+        <input type="text" id="customer-name" placeholder="Opsional..." />
+      </div>
+
+      <div class="payment-row">
+        <label>Bayar</label>
+        <div class="payment-input-wrap">
+          <span class="rp-label">Rp</span>
+          <input type="number" id="payment-input" placeholder="0" oninput="updateChange()" />
+        </div>
+      </div>
+
+      <div class="change-row">
+        <span>Kembalian</span>
+        <span id="change-display" class="change-amount">Rp 0</span>
+      </div>
+
+      <div class="quick-pay">
+        <span class="quick-label">Bayar Cepat</span>
+        <div class="quick-btns" id="quick-btns"></div>
+      </div>
+
+      <button class="btn-pay" onclick="processTransaction()" id="btn-pay" disabled>
+        <span>💳</span> Proses Transaksi
+      </button>
+    </div>
+  </aside>
+</main>
+
+<!-- ========== MODAL: STRUK ========== -->
+<div class="modal-overlay" id="receipt-modal" onclick="closeReceiptModal(event)">
+  <div class="modal-box receipt-box">
+    <div class="receipt" id="receipt-content"></div>
+    <div class="receipt-actions">
+      <button class="btn-outline" onclick="closeReceipt()">✕ Tutup</button>
+      <button class="btn-primary" onclick="downloadPDF()">⬇ Unduh PDF</button>
+      <button class="btn-pay" onclick="printReceipt()">🖨 Cetak</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== MODAL: STOK MANAGER ========== -->
+<div class="modal-overlay" id="stock-modal" onclick="closeStockModal(event)">
+  <div class="modal-box stock-box">
+    <div class="modal-header">
+      <h3>📦 Kelola Stok & Produk</h3>
+      <button class="btn-ghost" onclick="closeStockManager()">✕</button>
+    </div>
+    <div class="stock-list" id="stock-list"></div>
+  </div>
+</div>
+
+<!-- ========== MODAL: SETTINGS ========== -->
+<div class="modal-overlay" id="settings-modal" onclick="closeSettingsModal(event)">
+  <div class="modal-box settings-box">
+    <div class="modal-header">
+      <h3>⚙ Pengaturan Toko</h3>
+      <button class="btn-ghost" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-form">
+      <label>Nama Toko</label>
+      <input type="text" id="setting-store-name" placeholder="Nama toko Anda" />
+      <label>Alamat</label>
+      <input type="text" id="setting-store-address" placeholder="Alamat toko" />
+      <label>No. Telepon</label>
+      <input type="text" id="setting-store-phone" placeholder="0812-xxxx-xxxx" />
+      <label>Footer Struk</label>
+      <input type="text" id="setting-receipt-footer" placeholder="Terima kasih telah berbelanja!" />
+      <button class="btn-primary" onclick="saveSettings()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
